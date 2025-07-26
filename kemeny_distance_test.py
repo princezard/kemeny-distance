@@ -28,22 +28,22 @@ RANDOM_SEED = 555
 PERFORMANCE_TEST_SIZES = range(10, 1000, 20)
 
 # Number of iterations for each performance test to get a stable average
-TIME_ITERATIONS = 1
+TIME_ITERATIONS = 3
 
 # Define prediction semantics vector size for correctness check
 N = 20
 # Define the number of test cases for correctness check
 N_TEST_CASES = 100
 
-def generate_random_prediction_semantics(n): 
-    """Generate a list of 'n' random float with 1 decimal place to promote ties"""
-    return [round(random.random(), 1) for _ in range(n)]
+def generate_random_prediction_semantics(n, d): 
+    """Generate a list of 'n' random float with 'd' decimal places to control ties"""
+    return [round(random.random(), d) for _ in range(n)]
 
 def run_correctness_check():
     """Verify that the efficient and naive algorithms produce identical results"""
     
     test_cases = [
-        (generate_random_prediction_semantics(N), generate_random_prediction_semantics(N)) 
+        (generate_random_prediction_semantics(N, 1), generate_random_prediction_semantics(N, 1)) 
         for _ in range(N_TEST_CASES)
         ]
     
@@ -76,20 +76,33 @@ def run_correctness_check():
 def run_execution_time():
     
     sizes = list(PERFORMANCE_TEST_SIZES)
+    efficient_times_tie = []
     efficient_times = []
     naive_times = []
     
     for n in PERFORMANCE_TEST_SIZES:
         
         # Generate random prediction semantics with length 'n'
-        semantics_a = generate_random_prediction_semantics(n)
-        semantics_b = generate_random_prediction_semantics(n)
+        semantics_a = generate_random_prediction_semantics(n, 1)
+        semantics_b = generate_random_prediction_semantics(n, 1)
         
-        # Efficient algorithm time
-        total_time_eff = 0
+        semantics_aa = generate_random_prediction_semantics(n, 4)
+        semantics_bb = generate_random_prediction_semantics(n, 4)
+        
+        # Efficient algorithm time (more tie values)
+        total_time_eff_tie = 0
         for _ in range(TIME_ITERATIONS):
             start_time = time.perf_counter()
             compute_kemeny_distance(semantics_a, semantics_b)
+            end_time = time.perf_counter()
+            total_time_eff_tie += end_time - start_time
+        efficient_times_tie.append(total_time_eff_tie / TIME_ITERATIONS)
+        
+        # Efficient algorithm time (less tie values)
+        total_time_eff = 0
+        for _ in range(TIME_ITERATIONS):
+            start_time = time.perf_counter()
+            compute_kemeny_distance(semantics_aa, semantics_bb)
             end_time = time.perf_counter()
             total_time_eff += end_time - start_time
         efficient_times.append(total_time_eff / TIME_ITERATIONS)
@@ -103,9 +116,9 @@ def run_execution_time():
             total_time_naive += end_time - start_time
         naive_times.append(total_time_naive / TIME_ITERATIONS)
         
-    return sizes, efficient_times, naive_times
+    return sizes, efficient_times_tie, efficient_times, naive_times
 
-def plot_performance_results(sizes, efficient_times, naive_times):
+def plot_performance_results(sizes, efficient_times_tie, efficient_times, naive_times):
     """
     Generates a plot comparing the run times of the two algorithms against 
     their theoretical complexities
@@ -116,7 +129,7 @@ def plot_performance_results(sizes, efficient_times, naive_times):
     # Theoretical O(N log N)
     n_log_n = [n*math.log(n) for n in sizes]
     # Scaling factor to align with the theoretical curve
-    scaling_factor_eff = efficient_times[0] / n_log_n[0]
+    scaling_factor_eff = efficient_times_tie[0] / n_log_n[0]
     scaled_n_log_n = [scaling_factor_eff * t for t in n_log_n]
     
     ax.plot(sizes, scaled_n_log_n, label="Theoretical O(N log N)")
@@ -130,20 +143,23 @@ def plot_performance_results(sizes, efficient_times, naive_times):
     ax.plot(sizes, scaled_n_squared, label="Theoretical O(N^2)")
     
     # Plot observed time as scatter points
-    ax.scatter(sizes, efficient_times, color='blue', label="Observed Efficient Time")
+    ax.scatter(sizes, efficient_times, color='blue', label="Observed Efficient Time (less ties)")
+    ax.scatter(sizes, efficient_times_tie, color='green', label="Observed Efficient Time (more ties)")
     ax.scatter(sizes, naive_times, color='red', label="Observed Naive Time")
-        
-    ax.set_xlabel("Input Size (N)", fontsize=18)
-    ax.set_ylabel("Execution Time (seconds)", fontsize=18)
+    
+    ax.tick_params(axis='both', which='major', labelsize=16)
+    ax.set_xlabel("Prediction Semantics Length (N)", fontsize=18)
+    ax.set_ylabel("Time (seconds)", fontsize=18)
     ax.set_title("Kemeny Distance Algorithm Performance Comparison", fontsize=22)
     ax.legend(fontsize=16)
+    ax.grid(True, alpha=0.3)
     ax.set_yscale("log")  # Use a log scale to better visualise the difference
     
 def main():
-    
+    random.seed(RANDOM_SEED)
     run_correctness_check()
-    sizes, efficient_times, naive_times = run_execution_time()
-    plot_performance_results(sizes, efficient_times, naive_times)
+    sizes, efficient_times_tie, efficient_times, naive_times = run_execution_time()
+    plot_performance_results(sizes, efficient_times_tie, efficient_times, naive_times)
 
 if __name__ == "__main__":
     main()
