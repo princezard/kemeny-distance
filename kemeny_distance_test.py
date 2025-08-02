@@ -85,8 +85,6 @@ def run_execution_time():
         # Generate random prediction semantics with length 'n'
         semantics_a = generate_random_prediction_semantics(n, 1)
         semantics_b = generate_random_prediction_semantics(n, 1)
-        
-        semantics_aa = generate_random_prediction_semantics(n, 4)
         semantics_bb = generate_random_prediction_semantics(n, 4)
         
         # Efficient algorithm time (more tie values)
@@ -102,7 +100,7 @@ def run_execution_time():
         total_time_eff = 0
         for _ in range(TIME_ITERATIONS):
             start_time = time.perf_counter()
-            compute_kemeny_distance(semantics_aa, semantics_bb)
+            compute_kemeny_distance(semantics_a, semantics_bb)
             end_time = time.perf_counter()
             total_time_eff += end_time - start_time
         efficient_times.append(total_time_eff / TIME_ITERATIONS)
